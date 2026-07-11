@@ -1,76 +1,56 @@
-<div align="center">
-  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f6a8/512.gif" alt="🚨" width="60" height="60">
-  <h1>Stadium Ops Copilot</h1>
-  <p><strong>Real-time, AI-driven tactical command center for high-density venue operations.</strong></p>
-  <p>Built for the <strong>Prompt Wars</strong> Challenge.</p>
-  
-  [![Live Demo](https://img.shields.io/badge/Live_Demo-Play_Now-00E5FF?style=for-the-badge)](https://muralimadhava96-ui.github.io/ops-copilot/)
-  [![Tech Stack](https://img.shields.io/badge/Tech-Vanilla_JS_|_FastAPI_|_Gemini-white?style=for-the-badge)](#)
-</div>
+# Stadium Ops Copilot
 
-<br/>
+Stadium Ops Copilot is a real-time tactical command center I built for the Prompt Wars challenge. It's designed to manage high-density venue operations (like 80,000 fans moving through a stadium) by synthesizing raw IoT and crowd density data into actionable recommendations.
 
-## 🎯 The Problem
+You can try the live demo here: https://muralimadhava96-ui.github.io/ops-copilot/
 
-Modern stadium operations rely on fragmented legacy systems. When 80,000 fans are moving through a venue, operators are bombarded with raw data (density metrics, IoT sensors, social media sentiment) but lack a unified layer for **tactical synthesis**. 
+## The Problem
 
-In high-stress scenarios (like a gate surge or a medical emergency), cognitive overload leads to delayed responses, misallocated resources, and dangerous crowd crushes.
+In modern stadium operations, operators usually have to juggle fragmented legacy systems. When high-stress scenarios happen—like a gate surge or a medical emergency—it's easy for cognitive overload to lead to delayed responses or misallocated resources. The goal of this project was to build a unified layer that helps operators make decisions faster and safer.
 
-## 🚀 The Solution
+## How it Works
 
-**Stadium Ops Copilot** is a real-time, AI-driven command center. It ingests simulated IoT crowd density data and leverages **Google Gemini 2.0 Flash** to synthesize the data into actionable tactical recommendations for the Ops Commander.
+The application ingests simulated IoT crowd density data and uses Google Gemini 2.0 Flash to act as a "copilot" for the Ops Commander. 
 
-### ✨ Key Innovations (Why This Wins)
+I focused on a few core concepts to make this actually usable in a real-world setting:
 
-#### 1. AI Transparency & "Glass Box" Reasoning
-We don't just output a "magic" command. The AI engine explicitly generates:
-- **Confidence Scores** (e.g., `CONF: 89%`) so commanders know when the model is certain vs. guessing.
-- **Explicit Trade-offs**: When manual dispatch is initiated, the system dynamically calculates the impact (e.g., *"⚠ Warning: Leaves Zone C with 0 available Medical Teams"*).
-- **Rejected Alternatives**: We show the commander *what else* the AI considered, allowing for rapid human-in-the-loop pivots.
+1. **"Glass Box" AI Reasoning**: The system doesn't just issue blind commands. It gives a Confidence Score (e.g. `CONF: 89%`), explains explicit trade-offs (e.g. "Warning: This leaves Zone C with 0 available Medical Teams"), and shows alternative actions it considered. This keeps the human fully in the loop.
+2. **Operational Safety**: Since AI in the physical world needs physical safeguards, I added things like a 3-second abort countdown for PA broadcasts and immutable audit trails that log every manual override by the operator.
+3. **Graceful Degradation**: If the backend server drops or disconnects, the UI seamlessly falls back to a locally mocked static mode. The operator is never left staring at a broken screen during a crisis.
 
-#### 2. Ruthless Operational Safety (Fail-Safes)
-Generative AI in the physical world requires physical safety constraints.
-- **The 3-Second Abort**: The "Drag to Broadcast" slider initiates a critical PA announcement. Instead of firing instantly, it triggers a high-visibility, screen-reader accessible 3-second abort countdown.
-- **Immutable Audit Trails**: Every manual override, whether a broadcast cancellation or a forced dispatch, is logged to the Action Feed with a strict `[Operator ID]` and timestamp, ensuring full post-incident accountability.
-- **Graceful Degradation**: If the backend AI server goes offline, the UI seamlessly falls back to a locally mocked static mode so the operator is never staring at a broken screen.
+## Tech Stack
 
-#### 3. Granular Situational Awareness
-Instead of highlighting an entire 20,000-person zone, the UI parses event descriptions and dynamically targets specific vector SVG nodes (e.g., pulsing exactly on **Gate G3**).
+I wanted to keep the architecture as lightweight and fast as possible:
+* **Frontend**: Pure HTML5 and Vanilla JS, styled with Tailwind CSS via CDN. No heavy frameworks meant 0ms hydration overhead.
+* **Backend**: Python 3 with FastAPI and Uvicorn.
+* **AI Integration**: The `google-genai` SDK powered by Gemini 2.0 Flash for low-latency inference.
+* **Hosting**: The frontend is deployed statically on GitHub Pages, while the backend simulation engine runs locally.
 
-#### 4. Engineering Rigor
-- **API Security**: Destructive REST endpoints are locked down with mandatory API Key headers.
-- **Stateless AI with Context**: The Gemini Engine is fed a rolling window of recent decisions, preventing it from double-allocating staff that were moved 30 seconds prior.
+## Running the Simulation Locally
 
-## 💻 Tech Stack
+If you want to run the full Python backend simulation engine yourself:
 
-- **Frontend:** Pure HTML5, Vanilla JavaScript, Tailwind CSS (via CDN). No heavy frameworks, ensuring 0ms hydration overhead for critical operations.
-- **Backend:** Python 3, FastAPI, Uvicorn, WebSockets.
-- **AI Brain:** `google-genai` SDK powered by **Gemini 2.0 Flash** for ultra-low latency tactical inference.
-- **Deployment:** GitHub Pages (Frontend) + Localhost simulation engine.
+1. Clone the repository and navigate into it:
+   ```bash
+   git clone https://github.com/muralimadhava96-ui/ops-copilot.git
+   cd ops-copilot
+   ```
 
-## 🏁 How to Run Locally
+2. Set up your Python environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-If you want to run the full AI-simulation engine with Python locally:
+3. Export your Gemini API key:
+   ```bash
+   export GEMINI_API_KEY="your-api-key-here"
+   ```
 
-```bash
-# 1. Clone the repo
-git clone https://github.com/muralimadhava96-ui/ops-copilot.git
-cd ops-copilot
-
-# 2. Setup Python environment
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 3. Add your Gemini API Key
-export GEMINI_API_KEY="your-api-key-here"
-
-# 4. Run the tactical server
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-Then visit `http://localhost:8000` in your browser.
-
-> **Note:** You can also test the UI immediately in static mode without running the backend by visiting the [Live Demo](https://muralimadhava96-ui.github.io/ops-copilot/).
-
----
-*Developed with passion and urgency using Advanced Agentic Coding.*
+4. Run the FastAPI server:
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+   
+Once the server is running, just open `http://localhost:8000` in your browser.
