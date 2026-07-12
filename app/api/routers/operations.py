@@ -34,7 +34,8 @@ async def execute_action(
         predicted_effects={},
         predicted_queue_reduction="N/A",
         alert_text_en=f"Manual action executed: {req.action_type}",
-        alert_translations={}
+        alert_translations={},
+        priority=1
     )
     
     # Store and broadcast to all connected clients
@@ -66,7 +67,8 @@ async def execute_broadcast(
         predicted_effects={},
         predicted_queue_reduction="N/A",
         alert_text_en=req.message,
-        alert_translations={}
+        alert_translations={},
+        priority=3
     )
     
     await store.add_decision(decision)
