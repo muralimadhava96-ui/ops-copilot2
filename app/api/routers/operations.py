@@ -3,15 +3,16 @@ from datetime import datetime, timezone
 import uuid
 
 from app.schemas import ActionRequest, BroadcastRequest, AuditLogRecord, EngineDecision
-from app.services.store import get_state_store, StateStore
-from app.services.broadcast import broadcast_manager
+from app.services.store import StateStore
+from app.services.dependencies import get_store
+import json
 
 router = APIRouter(prefix="/api/operations", tags=["operations"])
 
 @router.post("/action")
 async def execute_action(
     req: ActionRequest,
-    store: StateStore = Depends(get_state_store)
+    store: StateStore = Depends(get_store)
 ):
     """Execute a manual quick action (e.g. OPEN_OVERFLOW_GATES) overriding the AI."""
     
@@ -38,7 +39,7 @@ async def execute_action(
     
     # Store and broadcast to all connected clients
     await store.add_decision(decision)
-    await broadcast_manager.broadcast_event("decision", decision.model_dump())
+    await store.publish("broadcast_channel", json.dumps({"type": "decision", "payload": decision.model_dump()}))
     
     return {"status": "executed", "decision": decision}
 
@@ -46,7 +47,7 @@ async def execute_action(
 @router.post("/broadcast")
 async def execute_broadcast(
     req: BroadcastRequest,
-    store: StateStore = Depends(get_state_store)
+    store: StateStore = Depends(get_store)
 ):
     """Trigger a manual public address broadcast."""
     
@@ -69,6 +70,6 @@ async def execute_broadcast(
     )
     
     await store.add_decision(decision)
-    await broadcast_manager.broadcast_event("decision", decision.model_dump())
+    await store.publish("broadcast_channel", json.dumps({"type": "decision", "payload": decision.model_dump()}))
     
     return {"status": "broadcasted", "decision": decision}
