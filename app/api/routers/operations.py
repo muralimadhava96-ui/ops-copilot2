@@ -21,19 +21,28 @@ async def execute_action(
     
     event_id = f"EVT-MANUAL-{uuid.uuid4().hex[:6].upper()}"
     
+    action_map = {
+        "open-overflow": "OVERFLOW GATES OPENED",
+        "reverse-flow": "FLOW REVERSED",
+        "deploy-barriers": "BARRIERS DEPLOYED",
+        "lock-gate": "SECTOR GATE LOCKED"
+    }
+    
+    formatted_action = action_map.get(req.action_type, req.action_type.replace('-', ' ').upper())
+    
     decision = EngineDecision(
         event_id=event_id,
         risk_level="high",  # Manual overrides usually happen during high risk
         affected_zones=[req.zone_id] if req.zone_id else ["All"],
         confidence_score=100.0, # 100% confidence because it's human-directed
         decision_provenance={"based_on": ["Manual Operator Override"], "missing": []},
-        recommended_action=req.action_type.replace('-', ' ').upper(),
+        recommended_action=f"{formatted_action} - {req.zone_id}",
         reasoning=f"Manual Override [Operator ID: {req.operator_id}] • Immediate manual action initiated.",
         mission_objective="Immediate manual intervention",
         expected_outcome="Pending physical confirmation",
         predicted_effects={},
         predicted_queue_reduction="N/A",
-        alert_text_en=f"Manual action executed: {req.action_type}",
+        alert_text_en=f"{formatted_action} - {req.zone_id}",
         alert_translations={},
         priority=1
     )

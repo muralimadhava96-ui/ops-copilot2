@@ -21,7 +21,15 @@ export function setupQuickActions() {
         
         btn.classList.add('ring-2', 'ring-primary/50');
         setTimeout(() => btn.classList.remove('ring-2', 'ring-primary/50'), 1500);
-        showToast(`${action.replace('-', ' ').toUpperCase()} INITIATED`, 'success');
+        
+        const actionMap = {
+          'open-overflow': 'OVERFLOW GATES OPENED',
+          'reverse-flow': 'FLOW REVERSED',
+          'deploy-barriers': 'BARRIERS DEPLOYED',
+          'lock-gate': 'SECTOR GATE LOCKED'
+        };
+        const formattedAction = actionMap[action] || action.replace('-', ' ').toUpperCase();
+        showToast(`${formattedAction} - ${zone}`, 'success');
       } catch (err) {
         showToast('Action failed', 'error');
         console.error(err);
