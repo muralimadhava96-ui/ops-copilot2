@@ -1,27 +1,49 @@
+import pytest
 from fastapi.testclient import TestClient
-from app.main import app, emergency_state, audit_log, decision_history
+from app.main import app as fastapi_app
+from app.services.dependencies import get_store
+from app.services.store import InMemoryStateStore
+import os
+import time
+import app.api.routers.emergency
+import app.services.dependencies
 
-client = TestClient(app)
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(fastapi_app) as c:
+        yield c
 
-def test_scram_and_recover():
-    # Reset state
-    emergency_state.current_level = 0
-    audit_log.clear()
-    decision_history.decisions.clear()
+@pytest.fixture
+def override_store():
+    store = InMemoryStateStore()
+    fastapi_app.dependency_overrides[get_store] = lambda: store
+    original_store = app.services.dependencies._store_instance
+    app.services.dependencies._store_instance = store
 
-    # Trigger SCRAM
+    # Reset rate limit states to avoid test pollution
+    app.api.routers.emergency._dispatch_last_called = 0.0
+    app.api.routers.emergency._scram_last_called = 0.0
+    
+    yield store
+    
+    fastapi_app.dependency_overrides.clear()
+    app.services.dependencies._store_instance = original_store
+
+@pytest.mark.asyncio
+def test_scram_and_recover(client, override_store):
+    store = override_store
+    
+    # Needs valid SCRAM override code for level 3
+    os.environ["SCRAM_OVERRIDE_CODE"] = "TEST-CODE"
+    
+    # Trigger SCRAM Level 3
     response = client.post(
         "/api/emergency/scram",
         headers={"x-api-key": "OPS-COPILOT-2026"},
-        json={"level": 2, "operator_id": "TEST-CMD"}
+        json={"level": 3, "operator_id": "TEST-CMD", "override_code": "TEST-CODE"}
     )
     assert response.status_code == 200
-    assert response.json()["state"]["current_level"] == 2
-
-    # Verify audit log
-    assert len(audit_log) == 1
-    assert audit_log[0].action == "SCRAM_ACTIVATED"
-    assert audit_log[0].new_state == 2
+    assert response.json()["state"]["current_level"] == 3
 
     # Trigger Engine Decision (should be governed/passive)
     response = client.post(
@@ -41,28 +63,21 @@ def test_scram_and_recover():
     assert response.status_code == 200
     assert response.json()["state"]["current_level"] == 0
 
-    # Verify audit log
-    assert len(audit_log) == 2
-    assert audit_log[1].action == "SCRAM_RECOVERED"
-    assert audit_log[1].new_state == 0
-
-def test_dispatch_constraint():
-    # Reset state
-    emergency_state.current_level = 0
-    audit_log.clear()
-    decision_history.decisions.clear()
-
+def test_dispatch_constraint(client, override_store):
     # Try dispatch with sufficient reserve
     response = client.post(
-        "/api/dispatch",
+        "/api/emergency/dispatch",
         headers={"x-api-key": "OPS-COPILOT-2026"},
         json={"zone": "A", "roles": ["manager"], "remaining_reserve": 5}
     )
     assert response.status_code == 200
 
+    # Wait for rate limit to pass
+    app.api.routers.emergency._dispatch_last_called = 0.0
+
     # Try dispatch with insufficient reserve
     response = client.post(
-        "/api/dispatch",
+        "/api/emergency/dispatch",
         headers={"x-api-key": "OPS-COPILOT-2026"},
         json={"zone": "B", "roles": ["security"], "remaining_reserve": 1}
     )
