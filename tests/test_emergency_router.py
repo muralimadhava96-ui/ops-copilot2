@@ -29,7 +29,6 @@ def override_store():
     fastapi_app.dependency_overrides.clear()
     app.services.dependencies._store_instance = original_store
 
-@pytest.mark.asyncio
 def test_scram_and_recover(client, override_store):
     store = override_store
     
